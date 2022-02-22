@@ -1,0 +1,9 @@
+/artifacts
+contract-addresses
+cache
+node_modules
+yarn-error.log
+package-lock.json
+coverage.json
+.env
+.DS_Store
