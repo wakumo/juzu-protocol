@@ -7,3 +7,4 @@ package-lock.json
 coverage.json
 .env
 .DS_Store
+contracts/.v1

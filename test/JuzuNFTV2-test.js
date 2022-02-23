@@ -81,7 +81,7 @@ describe('Test Juzu', async function () {
       externalFeeReceipt: recipient.address,
       ethAmount: ethers.utils.parseEther('0.01'),
       apr: apr,
-      stages: { open: 0, locked: 1, unclocked: 2}
+      stages: { open: 0, locked: 1, unclocked: 2 },
     }
 
     await juzuFactory.deployed()
@@ -146,7 +146,7 @@ describe('Test Juzu', async function () {
       await testERC721.approve(juzuLocker.address, data.nftTokenId)
       await testERC20.approve(juzuLocker.address, data.assetAmount)
       // await juzuERC20.approve(juzuLocker.address, data.baseFeeAmount)
-      await expect(juzuLocker.addAssets(paramsEncoded))
+      await expect(juzuLocker.addAssets(paramsEncoded, 0))
         .to.emit(juzuLocker, 'JuzuLockUpdated')
         .withArgs(owner.address, data.juzuTokenId)
     })
@@ -161,7 +161,7 @@ describe('Test Juzu', async function () {
       await testERC20.approve(juzuLocker.address, data.assetAmount)
 
       await expect(
-        juzuLocker.addAssets(paramsEncoded, { value: data.ethAmount }),
+        juzuLocker.addAssets(paramsEncoded, 0, { value: data.ethAmount }),
       )
         .to.emit(juzuLocker, 'JuzuLockUpdated')
         .withArgs(owner.address, data.juzuTokenId)
@@ -188,16 +188,22 @@ describe('Test Juzu', async function () {
       await testERC721.approve(juzuLocker.address, data.nftTokenId)
       await testERC20.approve(juzuLocker.address, data.assetAmount)
 
-      await expect(juzuLocker.addAssets(paramsEncoded)).to.be.revertedWith('invalid_amount')
+      await expect(
+        juzuLocker.addAssets(paramsEncoded, 0),
+      ).to.be.revertedWith('invalid_amount')
     })
 
     it('fail to create offer without approve token erc20', async () => {
       await testERC721.approve(juzuLocker.address, data.nftTokenId)
-      await expect(juzuLocker.addAssets(paramsEncoded)).to.be.revertedWith('allowance')
+      await expect(
+        juzuLocker.addAssets(paramsEncoded, 0),
+      ).to.be.revertedWith('allowance')
     })
     it('fail to create offer without approve nft', async () => {
       await testERC20.approve(juzuLocker.address, data.assetAmount)
-      await expect(juzuLocker.addAssets(paramsEncoded)).to.be.revertedWith('transfer caller is not owner nor approved')
+      await expect(
+        juzuLocker.addAssets(paramsEncoded, 0),
+      ).to.be.revertedWith('transfer caller is not owner nor approved')
     })
   })
 
@@ -218,7 +224,7 @@ describe('Test Juzu', async function () {
       await testERC721.approve(juzuLocker.address, data.nftTokenId)
       await testERC20.approve(juzuLocker.address, data.assetAmount)
       // await juzuERC20.approve(juzuLocker.address, data.baseFeeAmount)
-      await juzuLocker.addAssets(paramsEncoded)
+      await juzuLocker.addAssets(paramsEncoded, 0)
     })
 
     it('transfer owner success', async () => {
@@ -234,10 +240,11 @@ describe('Test Juzu', async function () {
     })
 
     it('fail transfer owner if wrong owner is caller + not approve', async () => {
-      await expect(juzuERC721
-        .connect(buyer)
-        .transferFrom(owner.address, buyer.address, data.juzuTokenId))
-        .to.be.revertedWith('transfer caller is not owner nor approved')
+      await expect(
+        juzuERC721
+          .connect(buyer)
+          .transferFrom(owner.address, buyer.address, data.juzuTokenId),
+      ).to.be.revertedWith('transfer caller is not owner nor approved')
     })
     it('transfer success with approve function', async () => {
       await juzuERC721.approve(buyer.address, data.juzuTokenId)
@@ -285,7 +292,9 @@ describe('Test Juzu', async function () {
     it('deposit extra fee success', async () => {
       await testERC20.approve(juzuLocker.address, data.assetAmount)
 
-      await expect(juzuLocker.depositExtraFee(testERC20.address, data.assetAmount))
+      await expect(
+        juzuLocker.depositExtraFee(testERC20.address, data.assetAmount),
+      )
         .to.emit(juzuLocker, 'JuzuLockDeposited')
         .withArgs(data.juzuTokenId, testERC20.address, data.assetAmount)
       expect(
@@ -341,12 +350,49 @@ describe('Test Juzu', async function () {
         firstDeposit.add(secondDeposit),
       )
     })
+
+    it('deposit base fee multiple time both at depositBaseFee & addAssets', async () => {
+      // deposit 50 JUZ base fee first
+      await juzuERC20.approve(juzuLocker.address, data.baseFeeAmount.div(2))
+      await juzuLocker.depositBaseFee(data.baseFeeAmount.div(2))
+      expect(await juzuLocker.depositedBaseFee()).to.eq(
+        data.baseFeeAmount.div(2),
+      )
+      // deposit 50 JUZ at addAssets step
+      await testERC721.approve(juzuLocker.address, data.nftTokenId)
+      await testERC20.approve(juzuLocker.address, data.assetAmount)
+      await juzuERC20.approve(juzuLocker.address, data.baseFeeAmount.div(2))
+      await juzuLocker.addAssets(paramsEncoded, data.baseFeeAmount.div(2))
+
+      expect(await juzuLocker.depositedBaseFee()).to.eq(data.baseFeeAmount)
+    })
+
+    it('deposit base fee multiple time both at depositBaseFee & addAssets include JUZ as locked data', async () => {
+      params.assets.push({
+        token: juzuERC20.address,
+        amount: data.assetAmount,
+      })
+      paramsEncoded = encodeParams(params)
+      await juzuERC20.approve(juzuLocker.address, data.baseFeeAmount.div(2))
+      await juzuLocker.depositBaseFee(data.baseFeeAmount.div(2))
+      expect(await juzuLocker.depositedBaseFee()).to.eq(
+        data.baseFeeAmount.div(2),
+      )
+      await testERC721.approve(juzuLocker.address, data.nftTokenId)
+      await testERC20.approve(juzuLocker.address, data.assetAmount)
+      await juzuERC20.approve(
+        juzuLocker.address,
+        data.assetAmount.add(data.baseFeeAmount.div(2)),
+      )
+      await juzuLocker.addAssets(paramsEncoded, data.baseFeeAmount.div(2))
+      expect(await juzuLocker.depositedBaseFee()).to.eq(data.baseFeeAmount)
+    })
   })
 
   //
   // ClaimStaking
   //
-  describe('claim stacking', async () => {
+  describe('claim staking', async () => {
     beforeEach(async () => {
       conditions.push({
         unlockAt: 0,
@@ -409,7 +455,7 @@ describe('Test Juzu', async function () {
       ])
 
       // add locked data after staking baseFee 1 month
-      await juzuLocker.addAssets(paramsEncoded)
+      await juzuLocker.addAssets(paramsEncoded, data.baseFeeAmount)
 
       // total reward is:
       // 2 month of baseFee staking + 1 month juzu locked
@@ -460,7 +506,7 @@ describe('Test Juzu', async function () {
       await network.provider.send('evm_setNextBlockTimestamp', [
         currentTime + month * 3,
       ])
-      await juzuLocker.addAssets(paramsEncoded)
+      await juzuLocker.addAssets(paramsEncoded, data.baseFeeAmount)
 
       // After more 1 month: total staking reward now are:
       // 3 month baseFee
@@ -487,7 +533,7 @@ describe('Test Juzu', async function () {
       await testERC20.approve(juzuLocker.address, data.assetAmount)
       await juzuERC20.approve(juzuLocker.address, data.baseFeeAmount)
 
-      await juzuLocker.addAssets(paramsEncoded)
+      await juzuLocker.addAssets(paramsEncoded, data.baseFeeAmount)
 
       currentTime = utils.convertInt(await testERC20.currentTime())
       // solve extraFee condition
@@ -503,7 +549,13 @@ describe('Test Juzu', async function () {
       groupIndex = 0
       await expect(juzuLocker.release(groupIndex, conditionIndex))
         .to.emit(juzuLocker, 'JuzuLockReleased')
-        .withArgs(data.juzuTokenId, groupIndex, conditionIndex, owner.address, data.baseFeeAmount)
+        .withArgs(
+          data.juzuTokenId,
+          groupIndex,
+          conditionIndex,
+          owner.address,
+          data.baseFeeAmount,
+        )
 
       stakingReward = baseStakingReward(data.baseFeeAmount)
 
@@ -578,7 +630,7 @@ describe('Test Juzu', async function () {
       await testERC20.approve(juzuLocker.address, data.assetAmount)
       await juzuERC20.approve(juzuLocker.address, data.baseFeeAmount)
 
-      await juzuLocker.addAssets(paramsEncoded)
+      await juzuLocker.addAssets(paramsEncoded, data.baseFeeAmount)
     })
 
     it('Check condition & release success by current owner', async () => {
@@ -598,7 +650,13 @@ describe('Test Juzu', async function () {
       groupIndex = 0
       await expect(juzuLocker.release(groupIndex, conditionIndex))
         .to.emit(juzuLocker, 'JuzuLockReleased')
-        .withArgs(data.juzuTokenId, groupIndex, conditionIndex, owner.address, data.baseFeeAmount)
+        .withArgs(
+          data.juzuTokenId,
+          groupIndex,
+          conditionIndex,
+          owner.address,
+          data.baseFeeAmount,
+        )
 
       expect(await testERC721.ownerOf(data.nftTokenId)).to.eq(owner.address)
       expect(await testERC20.balanceOf(owner.address)).to.eq(
@@ -610,10 +668,17 @@ describe('Test Juzu', async function () {
     it('Check condition & release success, the rest token which is rejected will be transfer to releaser', async () => {
       await testERC20.approve(juzuLocker.address, data.assetAmount.mul(5))
 
-      await juzuLocker.depositExtraFee(testERC20.address, data.assetAmount.mul(5))
-      await juzuLocker.depositExtraFee(utils.eth_address, data.ethAmount.sub(100), {
-        value: data.ethAmount.sub(100),
-      })
+      await juzuLocker.depositExtraFee(
+        testERC20.address,
+        data.assetAmount.mul(5),
+      )
+      await juzuLocker.depositExtraFee(
+        utils.eth_address,
+        data.ethAmount.sub(100),
+        {
+          value: data.ethAmount.sub(100),
+        },
+      )
 
       expect(
         await juzuLocker.depositedExtraFeeAmounts(testERC20.address),
@@ -637,7 +702,13 @@ describe('Test Juzu', async function () {
       groupIndex = 0
       expect((tx = await juzuLocker.release(groupIndex, conditionIndex)))
         .to.emit(juzuLocker, 'JuzuLockReleased')
-        .withArgs(data.juzuTokenId, groupIndex, conditionIndex, owner.address, data.baseFeeAmount)
+        .withArgs(
+          data.juzuTokenId,
+          groupIndex,
+          conditionIndex,
+          owner.address,
+          data.baseFeeAmount,
+        )
         .to.emit(juzuLocker, 'JuzuLockWithdrawed')
         .withArgs(utils.eth_address, owner.address, data.ethAmount.sub(100))
         .to.emit(juzuLocker, 'JuzuLockWithdrawed')
@@ -656,10 +727,17 @@ describe('Test Juzu', async function () {
     it('releaser is different from owner', async () => {
       await testERC20.approve(juzuLocker.address, data.assetAmount.mul(5))
 
-      await juzuLocker.depositExtraFee(testERC20.address, data.assetAmount.mul(5))
-      await juzuLocker.depositExtraFee(utils.eth_address, data.ethAmount.sub(100), {
-        value: data.ethAmount.sub(100),
-      })
+      await juzuLocker.depositExtraFee(
+        testERC20.address,
+        data.assetAmount.mul(5),
+      )
+      await juzuLocker.depositExtraFee(
+        utils.eth_address,
+        data.ethAmount.sub(100),
+        {
+          value: data.ethAmount.sub(100),
+        },
+      )
       // release by, group#0, condition #1: recipient2
       groupIndex = 0
       conditionIndex = 1
@@ -673,7 +751,13 @@ describe('Test Juzu', async function () {
           .release(groupIndex, conditionIndex)),
       )
         .to.emit(juzuLocker, 'JuzuLockReleased')
-        .withArgs(data.juzuTokenId, groupIndex, conditionIndex, recipient2.address, data.baseFeeAmount)
+        .withArgs(
+          data.juzuTokenId,
+          groupIndex,
+          conditionIndex,
+          recipient2.address,
+          data.baseFeeAmount,
+        )
         .to.emit(juzuLocker, 'JuzuLockWithdrawed')
         .withArgs(
           utils.eth_address,
@@ -708,7 +792,13 @@ describe('Test Juzu', async function () {
       conditionIndex = 0
       await expect(juzuLocker.release(groupIndex, conditionIndex))
         .to.emit(juzuLocker, 'JuzuLockReleased')
-        .withArgs(data.juzuTokenId, groupIndex, conditionIndex, owner.address, data.baseFeeAmount)
+        .withArgs(
+          data.juzuTokenId,
+          groupIndex,
+          conditionIndex,
+          owner.address,
+          data.baseFeeAmount,
+        )
         .to.emit(juzuLocker, 'JuzuLockWithdrawed')
         .withArgs(testERC20.address, data.externalFeeReceipt, data.assetAmount)
     })
@@ -724,7 +814,13 @@ describe('Test Juzu', async function () {
         }),
       )
         .to.emit(juzuLocker, 'JuzuLockReleased')
-        .withArgs(data.juzuTokenId, groupIndex, conditionIndex, owner.address, data.baseFeeAmount)
+        .withArgs(
+          data.juzuTokenId,
+          groupIndex,
+          conditionIndex,
+          owner.address,
+          data.baseFeeAmount,
+        )
         .to.emit(juzuLocker, 'JuzuLockWithdrawed')
         .withArgs(utils.eth_address, data.externalFeeReceipt, data.ethAmount)
     })
@@ -785,7 +881,7 @@ describe('Test Juzu', async function () {
       await testERC20.approve(juzuLocker.address, data.assetAmount.mul(6))
       await juzuERC20.approve(juzuLocker.address, data.baseFeeAmount)
 
-      await juzuLocker.addAssets(paramsEncoded)
+      await juzuLocker.addAssets(paramsEncoded, data.baseFeeAmount)
 
       await network.provider.send('evm_increaseTime', [data.unlockAt + 50])
 
@@ -795,14 +891,20 @@ describe('Test Juzu', async function () {
         juzuLocker.connect(recipient2).release(groupIndex, conditionIndex),
       )
         .to.emit(juzuLocker, 'JuzuLockReleased')
-        .withArgs(data.juzuTokenId, groupIndex, conditionIndex, recipient2.address, data.baseFeeAmount)
+        .withArgs(
+          data.juzuTokenId,
+          groupIndex,
+          conditionIndex,
+          recipient2.address,
+          data.baseFeeAmount,
+        )
     })
     it('release with condition in group #1', async () => {
       await testERC721.approve(juzuLocker.address, data.nftTokenId)
       await testERC20.approve(juzuLocker.address, data.assetAmount.mul(6))
       await juzuERC20.approve(juzuLocker.address, data.baseFeeAmount)
 
-      await juzuLocker.addAssets(paramsEncoded)
+      await juzuLocker.addAssets(paramsEncoded, data.baseFeeAmount)
 
       await juzuLocker.depositExtraFee(utils.eth_address, data.ethAmount, {
         value: data.ethAmount,
@@ -812,7 +914,13 @@ describe('Test Juzu', async function () {
       groupIndex = 1
       await expect(juzuLocker.release(groupIndex, conditionIndex))
         .to.emit(juzuLocker, 'JuzuLockReleased')
-        .withArgs(data.juzuTokenId, groupIndex, conditionIndex, owner.address, data.baseFeeAmount)
+        .withArgs(
+          data.juzuTokenId,
+          groupIndex,
+          conditionIndex,
+          owner.address,
+          data.baseFeeAmount,
+        )
         .to.emit(juzuLocker, 'JuzuLockWithdrawed')
         .withArgs(utils.eth_address, data.externalFeeReceipt, data.ethAmount)
     })
@@ -839,7 +947,7 @@ describe('Test Juzu', async function () {
       await testERC721.approve(juzuLocker.address, data.nftTokenId)
       await testERC20.approve(juzuLocker.address, data.assetAmount)
       await juzuERC20.approve(juzuLocker.address, data.baseFeeAmount)
-      await expect(juzuLocker.addAssets(paramsEncoded))
+      await expect(juzuLocker.addAssets(paramsEncoded, data.baseFeeAmount))
         .to.emit(juzuLocker, 'JuzuLockUpdated')
         .withArgs(owner.address, data.juzuTokenId)
 
@@ -877,7 +985,9 @@ describe('Test Juzu', async function () {
 
       // deposit extraFee
       await testERC20.approve(juzuLocker.address, data.assetAmount)
-      await expect(juzuLocker.depositExtraFee(testERC20.address, data.assetAmount))
+      await expect(
+        juzuLocker.depositExtraFee(testERC20.address, data.assetAmount),
+      )
         .to.emit(juzuLocker, 'JuzuLockDeposited')
         .withArgs(data.juzuTokenId, testERC20.address, data.assetAmount)
 
@@ -923,7 +1033,13 @@ describe('Test Juzu', async function () {
         juzuLocker.connect(buyer).release(groupIndex, conditionIndex),
       )
         .to.emit(juzuLocker, 'JuzuLockReleased')
-        .withArgs(data.juzuTokenId, groupIndex, conditionIndex, buyer.address, data.baseFeeAmount)
+        .withArgs(
+          data.juzuTokenId,
+          groupIndex,
+          conditionIndex,
+          buyer.address,
+          data.baseFeeAmount,
+        )
 
       // check information of release, nft & assset
       expect(await juzuLocker.releasedBy()).to.eq(buyer.address)
@@ -942,7 +1058,9 @@ describe('Test Juzu', async function () {
         .to.emit(juzuLocker, 'JuzuClaimedStaking')
         .withArgs(claimValue, buyer.address)
 
-      await expect(juzuERC721.ownerOf(data.juzuTokenId)).to.be.revertedWith('nonexistent') 
+      await expect(juzuERC721.ownerOf(data.juzuTokenId)).to.be.revertedWith(
+        'nonexistent',
+      )
       expect(await juzuERC20.balanceOf(buyer.address)).to.eq(
         juzuOwnerBalance.add(claimValue),
       )

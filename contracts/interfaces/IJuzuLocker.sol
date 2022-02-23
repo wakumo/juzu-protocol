@@ -56,7 +56,7 @@ interface IJuzuLocker is IJuzuLockerOwner {
   * @dev deposit base fee of release condition into Locker
   * @param _amount: deposit amount
   */
-  function depositBaseFee(uint256 _amount) external payable;  
+  function depositBaseFee(uint256 _amount) external;  
   
   /**
   * @dev get available staking reward amount

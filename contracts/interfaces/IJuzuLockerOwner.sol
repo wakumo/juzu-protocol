@@ -12,7 +12,7 @@ interface IJuzuLockerOwner {
   * @dev Add more assets into Juzu
   * @param _params: include nfts, tokens, coins are encoded follow struct: (NFT[], Asset[])
   */
-  function addAssets(bytes memory _params) external payable;
+  function addAssets(bytes memory _params, uint256 _baseFeeAmount) external payable;
 
   /**
   * @dev Claim staking reward from Locker

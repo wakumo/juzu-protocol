@@ -135,11 +135,11 @@ contract JuzuLocker is IJuzuLockerEvent, IJuzuLocker, ReentrancyGuard {
     /**
     * Inherit from IJuzuLockerOwner
     */
-    function addAssets(bytes memory _params) external payable override onlyOwner{
+    function addAssets(bytes memory _params, uint256 _baseFeeAmount) external payable override onlyOwner{
         require(stage != STAGE.UNLOCKED, "released");
         _transferLockData(_params);
-        if (JuzuERC20(payable(juzuERC20)).allowance(msg.sender,address(this)) > 0) {
-            depositBaseFee(baseFeeAmount);
+        if (_baseFeeAmount > 0) {
+            depositBaseFee(_baseFeeAmount);
         }
         emit JuzuLockUpdated(msg.sender, tokenId);
     }
@@ -281,9 +281,9 @@ contract JuzuLocker is IJuzuLockerEvent, IJuzuLocker, ReentrancyGuard {
     /**
     * Inherit from IJuzuLocker
     */
-    function depositBaseFee(uint256 _amount) public payable override {
-        require(depositedBaseFee.add(_amount) <= baseFeeAmount, "over_base_fee");
+    function depositBaseFee(uint256 _amount) public override {
         if (depositedBaseFee < baseFeeAmount) {
+            if (depositedBaseFee.add(_amount) > baseFeeAmount) _amount = baseFeeAmount.sub(depositedBaseFee);
             _safeTransferFrom(juzuERC20, msg.sender, _amount);
             depositedBaseFee =  depositedBaseFee.add(_amount);
             _updateStakingReward(_amount);

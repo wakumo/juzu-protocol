@@ -174,9 +174,9 @@ describe('Test Juzu', async function () {
       expect(result.conditions[1][0].externalFee.token).to.eq(juzuERC20.address)
       expect(result.conditions[1][0].releasableBy).to.eq(recipient2.address)
     })
-    it('owner still can release with condition nil', async() => {
+    it('owner still can release with condition nil', async () => {
       await juzuLocker.lock()
-      
+
       await juzuERC20.approve(juzuLocker.address, data.baseFeeAmount)
       await juzuLocker.depositBaseFee(data.baseFeeAmount)
 
@@ -211,7 +211,7 @@ describe('Test Juzu', async function () {
       await testERC721.approve(juzuLocker.address, data.nftTokenId)
       await testERC20.approve(juzuLocker.address, data.assetAmount)
 
-      await expect(juzuLocker.addAssets(paramsEncoded))
+      await expect(juzuLocker.addAssets(paramsEncoded, 0))
         .to.emit(juzuLocker, 'JuzuLockUpdated')
         .withArgs(owner.address, data.juzuTokenId)
     })
@@ -236,7 +236,7 @@ describe('Test Juzu', async function () {
       ]
       await juzuERC20.approve(juzuLocker.address, data.assetAmount)
       paramsEncoded = encodeParams(params)
-      await juzuLocker.addAssets(paramsEncoded)
+      await juzuLocker.addAssets(paramsEncoded, data.baseFeeAmount)
       await network.provider.send('evm_setNextBlockTimestamp', [
         currentTime + month * 2,
       ])
@@ -301,7 +301,7 @@ describe('Test Juzu', async function () {
       await testERC20.approve(juzuLocker.address, data.assetAmount)
 
       await expect(
-        juzuLocker.addAssets(paramsEncoded, { value: data.ethAmount }),
+        juzuLocker.addAssets(paramsEncoded, 0, { value: data.ethAmount }),
       )
         .to.emit(juzuLocker, 'JuzuLockUpdated')
         .withArgs(owner.address, data.juzuTokenId)
@@ -399,7 +399,7 @@ describe('Test Juzu', async function () {
       ]
       await juzuERC20.approve(juzuLocker.address, data.assetAmount)
       paramsEncoded = encodeParams(params)
-      await juzuLocker.addAssets(paramsEncoded)
+      await juzuLocker.addAssets(paramsEncoded, data.baseFeeAmount)
 
       // start calculate locking
       await juzuLocker.lock()
@@ -480,7 +480,7 @@ describe('Test Juzu', async function () {
       await testERC721.approve(juzuLocker.address, data.nftTokenId)
       await testERC20.approve(juzuLocker.address, data.assetAmount)
       await juzuERC20.approve(juzuLocker.address, data.baseFeeAmount)
-      await expect(juzuLocker.addAssets(paramsEncoded))
+      await expect(juzuLocker.addAssets(paramsEncoded, data.baseFeeAmount))
         .to.emit(juzuLocker, 'JuzuLockUpdated')
         .withArgs(owner.address, data.juzuTokenId)
       expect(await juzuLocker.stakingApr()).to.eq(data.apr)
@@ -575,7 +575,7 @@ describe('Test Juzu', async function () {
       await testERC721.approve(juzuLocker.address, data.nftTokenId)
       await testERC20.approve(juzuLocker.address, data.assetAmount)
       await juzuERC20.approve(juzuLocker.address, data.baseFeeAmount)
-      await expect(juzuLocker.addAssets(paramsEncoded))
+      await expect(juzuLocker.addAssets(paramsEncoded, data.baseFeeAmount))
         .to.emit(juzuLocker, 'JuzuLockUpdated')
         .withArgs(owner.address, data.juzuTokenId)
       expect(await juzuLocker.stakingApr()).to.eq(data.apr)
@@ -693,7 +693,7 @@ describe('Test Juzu', async function () {
       await testERC721.approve(juzuLocker.address, data.nftTokenId2)
       await testERC20.approve(juzuLocker.address, data.assetAmount)
       await juzuERC20.approve(juzuLocker.address, data.baseFeeAmount)
-      await expect(juzuLocker.addAssets(paramsEncoded))
+      await expect(juzuLocker.addAssets(paramsEncoded, data.baseFeeAmount))
         .to.emit(juzuLocker, 'JuzuLockUpdated')
         .withArgs(owner.address, data.juzuTokenId)
       expect(await juzuLocker.stakingApr()).to.eq(data.apr)
