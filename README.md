@@ -4,7 +4,7 @@ Open source implementation of the Ketos protocol. Version 1.0
 
 ## Documentation
 
-For a deep explanation of the Ketos Protocol, read the [White Paper]()
+For a deep explanation of the Ketos Protocol, read the [White Paper](./docs/Juzu_Protocol_Whitepaper_v1_0.pdf)
 
 ## Source code
 
