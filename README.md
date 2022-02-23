@@ -1,10 +1,10 @@
 # [Juzu Protocol](https://juzu.app/) &middot; [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-Open source implementation of the Ketos protocol. Version 1.0
+Open source implementation of the Juzu protocol. Version 1.0
 
 ## Documentation
 
-For a deep explanation of the Ketos Protocol, read the [White Paper](./docs/Juzu_Protocol_Whitepaper_v1_0.pdf)
+For a deep explanation of the Juzu Protocol, read the [White Paper](./docs/Juzu_Protocol_Whitepaper_v1_0.pdf)
 
 ## Source code
 
