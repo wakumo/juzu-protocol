@@ -8,3 +8,4 @@ coverage.json
 .env
 .DS_Store
 contracts/.v1
+scripts
